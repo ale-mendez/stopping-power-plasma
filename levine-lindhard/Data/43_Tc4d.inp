@@ -1,0 +1,8 @@
+    5
+	4			        				                                                                   length of arrays (m1,m2)  
+        14.59380    8.11647     4.92916	   3.05653    1.75674    								           array of x coeffs (xarray)
+   	-0.07374   -0.22371     0.23233    0.59271    0.33208									           array of orb coeffs (carray)
+	3	2	4	3	  					                   n quantum number and number of coeffs correspondign to each orbital (karray)
+   	2							                                                                   orbital type (s,p,d,f)
+	0.54372 
+5
