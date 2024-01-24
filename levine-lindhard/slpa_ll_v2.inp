@@ -1,0 +1,4 @@
+0.1         Mininum velocity (a.u.)
+10.         Maximum velocity (a.u.)
+bindener.res    Binding energy file name
+waves       Wavefunction folder name
