@@ -1,0 +1,12 @@
+0.1         Minimum velocity
+10.0        Maximum velocity
+0.1887      Atomic density ratio =  density [g/cm^3] / atomic_mass [g]
+2           Number of electrons in FEG
+0.4068998   Orbital energy (hartree)
+C2p         Output filename: filename_shellwise.dat
+
+
+
+0.4068998  2p carbon
+0.7120625  2s carbon
+11.3384414 1s carbon
