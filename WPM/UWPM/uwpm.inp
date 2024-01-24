@@ -1,0 +1,17 @@
+0.1         Minimum velocity
+20.0        Maximum velocity
+60          Temperature (eV)
+0.08296     Atomic density ratio =  density [g/cm^3] / atomic_mass [g]
+4           Number of electrons in FEG
+
+
+-----------------------------
+
+Aluminum:
+0.07542     Atomic density ratio =  density [g/cm^3] / atomic_mass [g]
+
+Silicon:
+0.08296     Atomic density ratio =  density [g/cm^3] / atomic_mass [g]
+
+Carbon:
+0.18874     Atomic density ratio =  density [g/cm^3] / atomic_mass [g]
