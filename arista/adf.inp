@@ -1,0 +1,17 @@
+0.1         Minimum velocity
+10.0        Maximum velocity
+0           Temperature (eV)
+1           iopt = 1 (atomic density ratio); = 2 (electronic density cm^-3)
+0.1887      Atomic density ratio =  density [g/cm^3] / atomic_mass [g]
+4           Number of electrons in FEG
+
+
+or 
+
+
+0.1         Minimum velocity
+20.0        Maximum velocity
+10          Temperature (eV)
+2           iopt = 1 (atomic density ratio); = 2 (electronic density cm^-3)
+1e22        Electron density [cm^-3]
+1.70870     Number of electrons in FEG
