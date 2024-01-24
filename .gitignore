@@ -4,3 +4,4 @@ other/
 *.dat
 test*
 *figures*
+*ipynb
