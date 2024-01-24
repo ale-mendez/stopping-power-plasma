@@ -4,6 +4,8 @@ c  degeneracy using Arista's dielectric function (PRA84)
 c
       program ABtheory
       IMPLICIT REAL*8 (A-H,O-Z)
+      real*8 K_MIN, K_MAX
+      complex*16 CFUN_K,CRES
       character (24) filename
       character(len=:),allocatable:: str
       parameter (NVMX=28)
@@ -13,8 +15,7 @@ c
       common/plas_atom/xkf
       common/plas_temp/tev,xdeg,xneta
 
-      EXTERNAL FUN1,GABQ
-c      external ga
+      external CFUN_K
 
       dimension vp_au(NVMX)
 
@@ -69,7 +70,8 @@ c... Compute parameters and conversions
          electron_density = electron_density_au / a0 ** 3
       else if (iopt.eq.2) then
          electron_density_au = electron_density * a0 ** 3
-         atomic_density_au = electron_density_au / xnumber_electrons
+         if (xnumber_electrons.ne.0.d0) 
+     |   atomic_density_au = electron_density_au / xnumber_electrons
          atomic_density = atomic_density_au / a0 ** 3
       endif
       xkf = (3*pi**2*electron_density_au)**(1.d0/3.d0)
@@ -117,29 +119,37 @@ c... Write output file
 
 c... Compute stopping power over a given distribution of velocities
       do 200 iv=1,NVMX
+c      do 200 iv=1,1
         v = vp_au(iv)
         VV = v
-
+        cte = 2./PI/V**2
 c.... add the minimum and maximum velocity given
         if ((vp_au(iv+1).gt.vmin).and.(v.lt.vmin)) v = vmin
         if ((v.gt.vmax).and.(vp_au(iv-1).lt.vmax)) v = vmax
         if ((v.lt.vmin).or.(v.gt.vmax)) go to 200
 
 c.... define integration limits for k variable
-        EIK1 = 1.D-5
         if (v.lt.1) epsmax = 50.d0
         if (v.ge.1) epsmax = 5.d0
-        EIK2 = epsmax*v
+        K_MIN = 1e-5
+        K_MAX = epsmax * v
+        IMAX = 0
+        IP = 0
 
 c.... compute integral
-        CALL GABQ(FUN1,EIK1,EIK2,SUM,TOLK,IER)
-        spp = 2./PI/V**2 * SUM
-        spp_conv = spp*conv_au_to_eVcm2/atomic_density_au
+        call INTEG(K_MIN,K_MAX,CFUN_K,CRES,TOLK,IMAX,IP)
+        sp = cte * dreal(CRES)
+        if (xnumber_electrons.ne.0.d0) then
+           spcs_conv = sp * conv_au_to_eVcm2/atomic_density_au
+           write(*,*) 'v=',v,'  spcs=',spcs_conv
+        else
+           write(*,*) 'v=',v,'  sp=',sp
+           spcs_conv = 0.d0
+        endif
 
 c.... print results in terminal and output file
-        write(*,*) 'v=',v,'  sp=',spp_conv
         open(7,file=str,status='old',access='append')
-        write(7,1004) v,spp,spp_conv
+        write(7,1004) v,sp,spcs_conv
         close(7)
 200   continue
 
@@ -153,48 +163,51 @@ c
 c Energy loss integrand over k
 c
 c-----------------------------------------------------------------------
-c
-      FUNCTION FUN1(K)
-      IMPLICIT REAL*8 (A-H,O-Z)
-      REAL*8 K,KK,wp(20),gamma(20),alpha(20),vf(20)
+      function CFUN_K(K)
+      implicit real*8 (a-h,o-z)
+      real*8 k, kk
+      complex*16 CFUN_K, CFUN_W, CRES
+      external CFUN_W
 
       COMMON/CINDIV/V
       common/CK/KK
       common/tolbck/TOLK,TOLW,TOLX
-      EXTERNAL GABQ1,fun2
 
-      KK  = K
+      KK = K
       ! INTEGRATE OVER OMEGA EVERYTHING FROM ZERO TO KV
-      W1  = 1.E-5
+      W1  = 0.d0
       W2  = K*V
-      CALL GABQ1(fun2,W1,W2,SUM1,TOLW,IER)
-      FUN1 = 1./K* SUM1
-      RETURN
-      END
+      IMAX = 0
+      IP = 0
+      call INTEG2(W1,W2,CFUN_W,CRES,TOLW,IMAX,IP)
+      CFUN_K = 1./K * CRES
+
+      return
+      end
 c
 c-----------------------------------------------------------------------
 c
 c Energy loss integrand over omega
 c
 c-----------------------------------------------------------------------
-c
-      FUNCTION Fun2(W)
-      IMPLICIT REAL*8 (A-Z)
+      function CFUN_W(W)
+      implicit real*8 (a-z)
+      complex*16 CFUN_W, cepsilon
+      
+      COMMON/CINDIV/V
       COMMON/CK/K
       common/plas_temp/tev,xdeg,xneta
-      external elfplasdeg,elfplas
-      external lindhard_full,lindhard_gamma0
+      external lindhard_full,elfplas
 
       if (tev.eq.0) then
          call lindhard_full(w,k,inv_elf)
-         !call elfplasdeg(w,k,ximelf)
       else
          call elfplas(w,k,inv_elf)
       end if
-      Fun2=inv_elf*W
+      CFUN_W = dcmplx(inv_elf * W, 0d0)
 
-      RETURN
-      END
+      return
+      end
 c
 c-----------------------------------------------------------------------
 c
@@ -218,6 +231,8 @@ c
      |    (C1-(ZZ-CU)**2)*CDLOG((ZZ-CU+C1)/(ZZ-CU-C1))))
 	
       FEPS=DIMAG(-C1/CEPSILON)
+c      write(666,*) w, xk, feps
+
       RETURN
       END
 c
@@ -255,7 +270,7 @@ c
 c
 c-----------------------------------------------------------------------
 c
-c Function G in Lindhard's dielectric approximation - Lindhard 1964
+c Function G in Lindhard dielectric approximation - Lindhard 1964
 c
 c-----------------------------------------------------------------------
 c
@@ -1006,4 +1021,326 @@ C  ****  WARNING (LOW ACCURACY) MESSAGE.
    15 FORMAT(5X,'SUM =',1PD19.12,', ERR =',D8.1//)
       IER=1
       RETURN
+      END
+
+c
+c-----------------------------------------------------------------------
+c
+C  Integration routine INTEG
+c
+C  CRESUL = INT. ON X [XL,+INFINITY] CFCT (X) dX
+c
+C  IT IS SUSPECTED THE MAIN CONTRIBUTION COMES FROM THE REGION
+C  CFCT(XL) TO CFCT(XL+DX), AFTERWARDS MOVES FOR ADDING RANGES
+C  OF DX
+c
+C  IT USES THE SUBROUTINE IDELZ
+c
+C      XL : LOWER LIMIT
+C      ER : RELATIVE ERROR, SUGGESTED VALUES 1.E-3,1.E-2,
+C    IMAX : NUMBER OF STEPS ('MOVES FOR '),DEFAULT:IF IMAX=0, IMAX=30
+C    CFCT : COMPLEX FUNCTION TO INTEGRATE
+C  CRESUL : RESULT
+C      IP : NUMERO DE SUBDIVISIONES(DEBE SER<25),DEFAULT:IF IP=0, IP=24 
+c
+C NECESITA TENER ABIERTO UN ARCHIVO CON UNIT=3 PARA ESCRIBIR EN
+C CASO DE PROBLEMAS
+c
+c-----------------------------------------------------------------------
+      SUBROUTINE INTEG(XL,DX,CFCT,CRESUL,ER,IMAX,IP)
+      
+      IMPLICIT REAL*8 (A-B,D-H,O-Z)
+      IMPLICIT DOUBLE COMPLEX (C)
+      parameter(NIMX=60)
+      
+      EXTERNAL CFCT
+      
+      DATA C0/(0.D0,0.D0)/
+      
+      IF(IMAX.EQ.0)IIMAX=NIMX
+      
+    ! ------------------------------------------------------------------
+    !   Primera integracion : [XL,XL+DX]
+    ! ------------------------------------------------------------------
+      XU=XL+DX
+      CALL IDELZ(XL,XU,CFCT,CR0,ER,NDIM0,IP)
+      CR=CR0
+      R=ABS(CR)
+
+    ! ------------------------------------------------------------------
+    !   Inicializacion de las integraciones siguientes
+    ! ------------------------------------------------------------------
+      XUI=XU
+      ERI=ER
+      
+    ! ------------------------------------------------------------------
+    !  Sucesivos pasos de integracion
+    ! ------------------------------------------------------------------
+      DO 1 I=1,IIMAX
+         CRI=C0
+         XLI=XUI
+         XUI=XLI+DX
+         CALL IDELZ(XLI,XUI,CFCT,CRI,ERI,NDIMI,IP)
+         CR=CR+CRI
+         RI=ABS(CRI)
+         R=ABS(CR)
+         RATIO=RI/R
+         IF(RATIO.LT.ER) GO TO 4
+         IF(RATIO.LT.0.1) ERI=ER/RATIO
+         IF(ERI.GT.0.1) ERI=0.1D0
+    1 CONTINUE
+      
+      WRITE(3,200) RATIO
+  200 FORMAT(1X,'IDELZ, I>IMAX, RATIO=',1PE10.3,/,80('-'))
+
+    4 CONTINUE
+      CRESUL=CR
+      
+      RETURN
+      END
+c
+c-----------------------------------------------------------------------
+c
+c Adaptative integration routine IDELZ
+c
+c Integrates a function that is complex in a certain region by introducing 
+c more points in a given interval.
+c
+c       XL,XU : lower and upper integration limits
+c       CF    : function
+c               (must be declared EXTERNAL in the calling routine)
+c       CRES  : result
+c       ERR   : integration error
+c       N     : number of points 3+2*N
+c       KMAX  : maximum number of partitions in a given interval
+c               (must be less than 25). If KMAX=0, then KMAX=24
+c
+c Uses an 3-point Simpson rule integration routine.
+c
+c-----------------------------------------------------------------------
+      SUBROUTINE IDELZ(XL,XU,CF,CRES,ERR,N,KMAX)	
+
+      IMPLICIT REAL*8 (A-B,D-H,O-Z)
+      IMPLICIT DOUBLE COMPLEX(C)
+      parameter(NPMX=55)
+
+      DIMENSION XXL(NPMX+5),XXU(NPMX+5),CINT(NPMX+5)
+      DIMENSION CFXL(NPMX+5),CFXM(NPMX+5),CFXU(NPMX+5)
+
+      DATA C0/(0.D0,0.D0)/
+
+      CRES=C0
+
+      IF(KMAX.EQ.0) KKMAX=NPMX
+
+      IF(XL.GT.XU)GO TO 1000
+
+    ! ------------------------------------------------------------------
+    ! VALORES INICIALES
+    ! ------------------------------------------------------------------
+
+      N=0
+      K=1
+
+      XXL(1)=XL
+      XXU(1)=XU
+      XM=0.5D0*(XU+XL)
+
+      CFXL(1)=CF(XL)
+      CFXU(1)=CF(XU)
+      CFXM(1)=CF(XM)
+
+      CALL SIMP(XXL(1),XXU(1),XM,CFXL(1),CFXU(1),CFXM(1),CINT(1))
+
+    ! ------------------------------------------------------------------
+    ! COMIENZO DE LA ITERACION
+    ! ------------------------------------------------------------------
+
+ 100  IF(K+1.GT.KKMAX) GO TO 900
+ 200  N=N+1
+
+      CR=CINT(K)
+
+      XXU(K+1)=XXU(K)
+      CFXU(K+1)=CFXU(K)
+
+      XXU(K)=0.5*(XXL(K)+XXU(K))
+      CFXU(K)=CFXM(K)
+
+      XXL(K+1)=XXU(K)
+      CFXL(K+1)=CFXM(K)
+
+      XM=0.5D0*( XXU(K)+XXL(K) )
+      CFXM(K)=CF(XM)
+
+      CALL SIMP(XXL(K),XXU(K),XM,CFXL(K),CFXU(K),CFXM(K),CINT(K))
+
+      K=K+1
+
+      XM=0.5D0*( XXU(K)+XXL(K) )
+      CFXM(K)=CF(XM)
+
+      CALL SIMP(XXL(K),XXU(K),XM,CFXL(K),CFXU(K),CFXM(K),CINT(K))
+
+      CRR=CINT(K-1)+CINT(K)
+
+      IF(ABS(CR-CRR).GT.(ERR*ABS(CRES+CRR)))GO TO 100        
+
+    ! ------------------------------------------------------------------
+    ! FIN DE LA ITERACION EN K
+    ! ------------------------------------------------------------------
+
+      CRES=CRES+CRR
+
+      K=K-2
+      IF(K.GT.0) GO TO 200
+
+    ! ------------------------------------------------------------------
+    ! FIN DE LA INTEGRACION
+    ! ------------------------------------------------------------------
+
+      RETURN
+
+    ! ------------------------------------------------------------------
+    ! MENSAJES DE ERROR
+    ! ------------------------------------------------------------------
+
+ 900  ERROR=ABS(CR-CRR)/ABS(CRES+CRR)
+      WRITE(3,10)ERROR,XXL(K),XXU(K)
+      STOP 'ERROR IN INTEG1'
+
+ 1000 WRITE(3,11)
+
+ 10   FORMAT(1X,'INTEG1',/,1X,'ERROR=',1PE10.3,5X,       
+     |       'XXL=',1PE10.3,5X,'XXU=',1PE10.3,/,80('-'))    
+ 11   FORMAT(1X,'INTEG1',/,1X,'ERROR : XL.GT.XU',/,80('-'))    
+      STOP 'ERROR IN INTEG1'
+
+      END
+c
+c-----------------------------------------------------------------------
+c
+c 3-point Simpson integration routine
+c
+c-----------------------------------------------------------------------
+      SUBROUTINE SIMP(XL,XU,XM,CF0,CF2,CF1,CY)
+
+      IMPLICIT REAL*8 (A-B,D-H,O-Z)
+      IMPLICIT DOUBLE COMPLEX(C)
+
+      W=0.5D0*(XU-XL)
+
+      CY=(W/3.D0)*(CF0+4.D0*CF1+CF2)
+
+      RETURN
+      END
+
+C **********************************************************************
+C    SUBRUTINA DE INTEGRACION
+
+C       Integra una funcion que es complicada solo en cierta region,
+C       poniendo mas puntos en dicha zona.
+
+C       XL,XU : limites inferior y superior de integracion.        
+C       CF : funcion compleja a integrar
+C            (Debe ser declarada EXTERNAL en el programa de llamamiento)
+C       CRES : resultado
+C       ERR : error de integracion pedido
+C       N : el numero de puntos usados es 3+2*N
+C       KMAX :numero maximo de particiones de un dado intervalo
+C             Debe ser menor que 25. Si KMAX=0 toma KMAX=24
+
+C       Usa una subrutina de integracion por Simpson con 3 puntos
+
+C ----------------------------------------------------------------------
+      SUBROUTINE INTEG2(XL,XU,CF,CRES,ERR,N,KMAX)	
+      
+      IMPLICIT REAL*8 (A-B,D-H,O-Z)
+      IMPLICIT DOUBLE COMPLEX(C)
+      parameter(NPMX=55)
+
+      DIMENSION XXL(NPMX+5),XXU(NPMX+5),CINT(NPMX+5)
+      DIMENSION CFXL(NPMX+5),CFXM(NPMX+5),CFXU(NPMX+5)
+
+      DATA C0/(0.D0,0.D0)/
+
+      CRES=C0
+
+      IF(XL.GT.XU)GO TO 1000
+
+      IF(KMAX.EQ.0)KKMAX=NPMX
+
+
+C -----VALORES INICIALES
+
+      N=0
+      K=1
+
+      XXL(1)=XL
+      XXU(1)=XU
+      XM=0.5D0*(XU+XL)
+
+      CFXL(1)=CF(XL)
+      CFXU(1)=CF(XU)
+      CFXM(1)=CF(XM)
+
+      CALL SIMP(XXL(1),XXU(1),XM,CFXL(1),CFXU(1),CFXM(1),CINT(1))
+
+C -----COMIENZO DE LA ITERACION
+
+ 100  IF(K+1.GT.KKMAX) GO TO 900
+ 200  N=N+1
+
+      CR=CINT(K)
+
+      XXU(K+1)=XXU(K)
+      CFXU(K+1)=CFXU(K)
+
+      XXU(K)=0.5*(XXL(K)+XXU(K))
+      CFXU(K)=CFXM(K)
+
+      XXL(K+1)=XXU(K)
+      CFXL(K+1)=CFXM(K)
+
+      XM=0.5D0*( XXU(K)+XXL(K) )
+      CFXM(K)=CF(XM)
+
+      CALL SIMP(XXL(K),XXU(K),XM,CFXL(K),CFXU(K),CFXM(K),CINT(K))
+
+      K=K+1
+
+      XM=0.5D0*( XXU(K)+XXL(K) )
+      CFXM(K)=CF(XM)
+
+      CALL SIMP(XXL(K),XXU(K),XM,CFXL(K),CFXU(K),CFXM(K),CINT(K))
+
+      CRR=CINT(K-1)+CINT(K)
+
+      IF(ABS(CR-CRR).GT.(ERR*ABS(CRES+CRR)))GO TO 100        
+
+C ------ FIN DE LA ITERACION EN K
+
+      CRES=CRES+CRR
+
+      K=K-2
+      IF(K.GT.0) GO TO 200
+
+C ------FIN DE LA INTEGRACION
+
+      RETURN
+
+C ----------------------------------------------------------------------
+C ------MENSAJES DE ERROR
+C ----------------------------------------------------------------------
+
+ 900  ERROR=ABS(CR-CRR)/ABS(CRES+CRR)
+      WRITE(3,10)ERROR,XXL(K),XXU(K)
+ 10   FORMAT(1X,'INTEG3',/,1X,'ERROR=',1PE10.3,5X,       
+     1       'XXL=',1PE10.3,5X,'XXU=',1PE10.3,/,80('-'))    
+      STOP 'ERROR: INTEG3'
+
+ 1000 WRITE(3,11)
+ 11   FORMAT(1X,'INTEG3',/,1X,'ERROR : XL.GT.XU',/,80('-'))    
+      STOP 'ERROR: INTEG3'
+
       END
