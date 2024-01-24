@@ -1,0 +1,122 @@
+0.1         Minimum velocity
+20.0        Maximum velocity
+2           Number of electrons in FEG
+1.797       q1, shell parameter by Kaneko (1993)
+4.262427    Orbital energy (hartree)
+1.0d0       Gamma parameter
+
+------------------------------
+
+Data from Kaneko (1993): 
+
+-----------
+| Silicio |
+-----------
+
+    N    q1      enl
+1s: 2   7.988    68.8124557
+2s: 2   1.890    6.1565383
+2p: 6   1.797    4.2560541
+
+##### 1s
+2           Number of electrons in FEG
+7.988       q1, shell parameter by Kaneko (1993)
+68.81940    Orbital energy (hartree)
+1.0d0       Gamma parameter
+
+##### 2s
+2           Number of electrons in FEG
+1.890       q1, shell parameter by Kaneko (1993)
+6.162995    Orbital energy (hartree)
+1.0d0       Gamma parameter
+
+##### 2p
+2           Number of electrons in FEG
+1.797       q1, shell parameter by Kaneko (1993)
+4.262427    Orbital energy (hartree)
+1.0d0       Gamma parameter
+
+
+
+-----------
+| Carbono |
+-----------
+
+    N    q1      enl
+1s: 2   3.268    11.3384414
+2s: 2   0.6420   0.7120625
+2p: 2   0.5725   0.4068998
+
+##### 1s
+2           Number of electrons in FEG
+3.268       q1, shell parameter by Kaneko (1993)
+11.3384414   Orbital energy (hartree)
+
+##### 2s
+2           Number of electrons in FEG
+0.6420      q1, shell parameter by Kaneko (1993)
+0.7120625   Orbital energy (hartree)
+
+##### 2p
+2           Number of electrons in FEG
+0.5725      q1, shell parameter by Kaneko (1993)
+0.4068998   Orbital energy (hartree)
+
+
+
+----------
+| Silver |
+----------
+
+     N    q1      enl
+4s:  2   1.278    4.0014959
+4p:  6   1.138    2.6768164
+4d: 10   0.7370   0.537395
+
+##### 4s - OK
+2           Number of electrons in FEG
+1.278       q1, shell parameter by Kaneko (1993)
+4.0014959   Orbital energy (hartree)
+1.0d0       Gamma parameter
+
+##### 4p - OK
+6           Number of electrons in FEG
+1.138       q1, shell parameter by Kaneko (1993)
+2.6768164   Orbital energy (hartree)
+1.0d0       Gamma parameter
+
+
+##### 4d - OK 
+10          Number of electrons in FEG
+0.53        q1, shell parameter by Kaneko (1993)
+0.147       Orbital energy (hartree)
+2.69d0      Gamma parameter
+
+
+------------
+| Aluminio |
+------------
+
+    N    q1      enl
+1s: 2   7.276   58.5010293
+2s: 2   1.713   4.9106725
+2p: 6   1.625   3.2183039
+
+##### 1s - OK
+2           Number of electrons in FEG
+7.276       q1, shell parameter by Kaneko (1993)
+58.5010293   Orbital energy (hartree)
+1.0d0       Gamma parameter
+
+##### 2s - OK
+2           Number of electrons in FEG
+1.713       q1, shell parameter by Kaneko (1993)
+4.9106725   Orbital energy (hartree)
+1.0d0       Gamma parameter
+
+##### 2p - OK
+6           Number of electrons in FEG
+1.625       q1, shell parameter by Kaneko (1993)
+3.2183039   Orbital energy (hartree)
+1.0d0       Gamma parameter
+
